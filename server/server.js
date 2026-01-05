@@ -88,11 +88,17 @@ function serveStaticFile(res, filePath, contentType) {
 }
 
 function openBrowser(url) {
-  const command = process.platform === 'darwin' ? 'open' :
-                  process.platform === 'win32' ? 'start' :
-                  'xdg-open';
+  let command;
+  if (process.platform === 'darwin') {
+    command = `open "${url}"`;
+  } else if (process.platform === 'win32') {
+    // start is a shell built-in; first quoted arg is window title, so use empty title
+    command = `cmd /c start "" "${url}"`;
+  } else {
+    command = `xdg-open "${url}"`;
+  }
 
-  exec(`${command} "${url}"`, (error) => {
+  exec(command, (error) => {
     if (error) {
       Logger.debug(`Failed to open browser: ${error.message}`);
     }

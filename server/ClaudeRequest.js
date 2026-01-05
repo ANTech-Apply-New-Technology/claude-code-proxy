@@ -551,12 +551,24 @@ class ClaudeRequest {
       }
     } else {
       res.removeHeader('content-encoding');
-      
+
       let responseData = '';
       claudeResponse.on('data', chunk => {
         responseData += chunk;
       });
+
+      claudeResponse.on('error', (err) => {
+        Logger.error('Claude non-streaming response error:', err);
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+        }
+        if (!res.destroyed) {
+          res.end(JSON.stringify({ error: 'Upstream error', message: err.message }));
+        }
+      });
+
       claudeResponse.on('end', () => {
+        Logger.debug(`Non-streaming response (${claudeResponse.statusCode}): ${responseData.substring(0, 500)}`);
         try {
           const jsonData = JSON.parse(responseData);
           res.setHeader('Content-Type', 'application/json');
