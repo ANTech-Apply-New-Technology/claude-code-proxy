@@ -5,8 +5,9 @@ COPY package.json ./
 RUN npm install --omit=dev 2>/dev/null || true
 COPY . .
 
-# Use docker config (0.0.0.0, no browser auto-open)
-RUN cp server/config.docker.txt server/config.txt
+# Use docker config and force 0.0.0.0 binding for Railway
+RUN cp server/config.docker.txt server/config.txt && \
+    sed -i 's/^host=.*/host=0.0.0.0/' server/config.txt
 
 # Token persistence: mount a volume at /data
 ENV HOME=/data
