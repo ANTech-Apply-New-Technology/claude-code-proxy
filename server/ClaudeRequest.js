@@ -341,6 +341,8 @@ class ClaudeRequest {
     if (body.system) {
       if (Array.isArray(body.system)) {
         body.system.unshift(systemPrompt);
+      } else if (typeof body.system === 'string') {
+        body.system = [systemPrompt, { type: 'text', text: body.system }];
       } else {
         body.system = [systemPrompt, body.system];
       }
