@@ -1,0 +1,37 @@
+#!/bin/bash
+# Claude Code Multi-Provider Proxy wrapper
+# Usage:
+#   claude-proxy                  → Claude (default)
+#   claude-proxy gemini           → Gemini 2.5 Pro
+#   claude-proxy gemini-flash     → Gemini 2.5 Flash
+#   claude-proxy gemini-3         → Gemini 3 Pro Preview
+#   claude-proxy codex            → OpenAI via ChatGPT Plus
+#   claude-proxy <any-model>      → passed through to proxy
+
+PROXY_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+PROXY_PORT=8083
+PROXY_URL="http://localhost:$PROXY_PORT"
+# Start proxy if not already running (persists across terminal sessions)
+if ! lsof -ti:"$PROXY_PORT" >/dev/null 2>&1; then
+  cd "$PROXY_DIR"
+  nohup uv run python -m uvicorn server:app --host 127.0.0.1 --port "$PROXY_PORT" --log-level warning \
+    >/dev/null 2>&1 &
+  disown
+
+  # Wait for proxy to accept connections
+  for i in $(seq 1 40); do
+    lsof -ti:"$PROXY_PORT" >/dev/null 2>&1 && break
+    sleep 0.3
+  done
+fi
+
+# Build claude args
+MODEL="${1:-}"
+shift 2>/dev/null
+CLAUDE_ARGS=("$@")
+
+if [ -n "$MODEL" ]; then
+  CLAUDE_ARGS=("--model" "$MODEL" "${CLAUDE_ARGS[@]}")
+fi
+
+ANTHROPIC_BASE_URL="$PROXY_URL" exec claude "${CLAUDE_ARGS[@]}"
